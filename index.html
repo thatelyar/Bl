@@ -21,7 +21,7 @@
 <div id="app">
   <header class="top">
     <a class="brand" href="./" aria-label="Kairo">
-      <svg viewBox="0 0 512 512" width="30" height="30" aria-hidden="true"><rect width="512" height="512" fill="#17171C"/><path d="M340 150 232 256l108 106" fill="none" stroke="#723BFA" stroke-width="76" stroke-linecap="round" stroke-linejoin="round"/><rect x="134" y="112" width="76" height="288" rx="38" fill="#B9F500"/></svg>
+      <img src="icons/icon.svg" alt="" width="32" height="32">
       <span>kairo</span>
     </a>
     <button class="icon-btn" id="bell" aria-label="Notifications"></button>
@@ -29,13 +29,15 @@
 
   <main id="view" tabindex="-1"></main>
 
-  <nav class="dock" aria-label="Main">
-    <button data-tab="today" aria-label="Today"></button>
-    <button data-tab="goals" aria-label="Goals"></button>
+  <div class="bar">
+    <nav class="dock" aria-label="Main">
+      <button data-tab="today" aria-label="Today"></button>
+      <button data-tab="goals" aria-label="Goals"></button>
+      <button data-tab="focus" aria-label="Focus"></button>
+      <button data-tab="you" aria-label="You"></button>
+    </nav>
     <button class="fab" data-act="new" aria-label="New task"></button>
-    <button data-tab="focus" aria-label="Focus"></button>
-    <button data-tab="you" aria-label="You"></button>
-  </nav>
+  </div>
 </div>
 
 <dialog class="sheet" id="task-dlg">

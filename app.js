@@ -17,21 +17,20 @@ const fmt = (s, o) => parseYmd(s).toLocaleDateString('en-US', o);
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const COLORS = ['#B9F500', '#9B74FF', '#FF6B9A', '#3DD6FF', '#FFB13D', '#F6F6F8'];
 
-const st = d => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
-// Icon language: solid, rounded "stadium" shapes with a soft second tone.
+// Icon language: rounded outlines with a soft tinted fill (class "f"), solid bits use class "s".
 const P = {
-  today: '<rect x="3" y="4.5" width="18" height="16.5" rx="5.5" opacity=".38"/><rect x="6.4" y="2" width="3" height="6" rx="1.5"/><rect x="14.6" y="2" width="3" height="6" rx="1.5"/><rect x="7" y="12.2" width="10" height="4" rx="2"/>',
-  goals: '<circle cx="12" cy="12" r="9.5" opacity=".3"/><circle cx="12" cy="12" r="5.6" opacity=".55"/><circle cx="12" cy="12" r="2.4"/>',
-  focus: '<circle cx="12" cy="13.2" r="8.3" opacity=".38"/><path d="M12 13.2V4.9a8.3 8.3 0 0 1 7.19 12.45z"/><rect x="9.2" y="1.4" width="5.6" height="2.6" rx="1.3"/>',
-  you: '<rect x="3.2" y="11" width="4.8" height="10" rx="2.4" opacity=".45"/><rect x="9.6" y="3" width="4.8" height="18" rx="2.4"/><rect x="16" y="7.5" width="4.8" height="13.5" rx="2.4" opacity=".45"/>',
-  plus: '<rect x="10.3" y="3" width="3.4" height="18" rx="1.7"/><rect x="3" y="10.3" width="18" height="3.4" rx="1.7"/>',
-  bell: '<path d="M12 2.6A6.4 6.4 0 0 0 5.6 9v4.1l-1.5 3.3A1.1 1.1 0 0 0 5.1 18h13.8a1.1 1.1 0 0 0 1-1.6l-1.5-3.3V9A6.4 6.4 0 0 0 12 2.6z"/><rect x="9.4" y="19.4" width="5.2" height="2.4" rx="1.2" opacity=".55"/>',
-  check: st('M5 12.5l4.5 4.5L19 7.5'),
-  star: '<path d="M12 2.8l2.75 5.6 6.15.9-4.45 4.3 1.05 6.1L12 16.8l-5.5 2.9 1.05-6.1L3.1 9.3l6.15-.9z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
-  repeat: st('M4 11V9.8A3.8 3.8 0 0 1 7.8 6H19l-3-3M20 13v1.2a3.8 3.8 0 0 1-3.8 3.8H5l3 3'),
-  left: st('M14.5 6l-6 6 6 6'),
-  right: st('M9.5 6l6 6-6 6'),
-  arrow: st('M5 12h14M13 6l6 6-6 6'),
+  today: '<path class="f" d="M6.5 15a5.5 5.5 0 0 1 11 0z"/><path d="M3 19h18M12 3.5v2M4.6 7.6L6 9M19.4 7.6L18 9"/>',
+  goals: '<circle class="f" cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="4.3"/><circle class="s" cx="12" cy="12" r="1.3"/>',
+  focus: '<circle class="f" cx="12" cy="13.5" r="7.6"/><path d="M12 13.5V9.6M9.6 2.8h4.8"/>',
+  you: '<circle class="f" cx="12" cy="8.2" r="3.7"/><path class="f" d="M4.8 20c1-3.5 3.8-5.2 7.2-5.2s6.2 1.7 7.2 5.2z"/>',
+  plus: '<path d="M12 4.5v15M4.5 12h15"/>',
+  bell: '<path class="f" d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.4 2H4.6z"/><path d="M10 21.2h4"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  star: '<path class="s" d="M12 2.8l2.75 5.6 6.15.9-4.45 4.300 1.05 6.1L12 16.8l-5.5 2.9 1.05-6.1L3.1 9.300l6.15-.9z"/>',
+  repeat: '<path d="M4 11V9.8A3.8 3.8 0 0 1 7.8 6H19l-3-3M20 13v1.2a3.8 3.8 0 0 1-3.8 3.8H5l3 3"/>',
+  left: '<path d="M14.5 6l-6 6 6 6"/>',
+  right: '<path d="M9.5 6l6 6-6 6"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
 };
 const icon = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
 
@@ -383,7 +382,9 @@ const ACT = {
   toggle: el => {
     toggleTask(el.dataset.id);
     el.closest('.task').classList.toggle('done');
-    setTimeout(render, 260);
+    el.classList.add('just');
+    navigator.vibrate?.(12);
+    setTimeout(render, 420);
   },
   move: el => { const t = S.tasks.find(x => x.id === el.dataset.id); t.date = today(); save(); render(); },
   pick: el => { ui.date = el.dataset.d; render(); },
@@ -470,7 +471,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { ti
 
 // ---------- boot ----------
 $('#bell').innerHTML = icon('bell');
-$$('.dock button').forEach(b => b.innerHTML = icon(b.dataset.tab || 'plus'));
+$$('.dock button').forEach(b => b.innerHTML = icon(b.dataset.tab) + `<span>${b.getAttribute('aria-label')}</span>`);
+$('.fab').innerHTML = icon('plus');
 applyTheme();
 render();
 if (params.get('new')) openTask(null);
