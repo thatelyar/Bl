@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kairo — Daily Planner</title>
+<meta name="description" content="A calm, minimal daily planner with goals, focus and reminders.">
+<meta name="theme-color" content="#F3F0E8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kairo">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <a class="brand" href="./" aria-label="Kairo">
+      <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><path d="M16 5.5A10.5 10.5 0 1 1 5.5 16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="8.6" cy="8.6" r="2.5" fill="var(--accent)"/></svg>
+      <span>Kairo</span>
+    </a>
+    <button class="icon-btn" id="bell" aria-label="Notifications"></button>
+  </header>
+
+  <main id="view" tabindex="-1"></main>
+
+  <nav class="dock" aria-label="Main">
+    <button data-tab="today" aria-label="Today"></button>
+    <button data-tab="goals" aria-label="Goals"></button>
+    <button class="fab" data-act="new" aria-label="New task"></button>
+    <button data-tab="focus" aria-label="Focus"></button>
+    <button data-tab="you" aria-label="You"></button>
+  </nav>
+</div>
+
+<dialog class="sheet" id="task-dlg">
+  <form method="dialog" id="task-form">
+    <div class="grab"></div>
+    <input class="title-input" name="title" placeholder="What needs doing?" autocomplete="off" required maxlength="140">
+    <textarea name="notes" rows="2" placeholder="Notes" maxlength="600"></textarea>
+    <div class="fields">
+      <label>Date<input type="date" name="date" required></label>
+      <label>Time<input type="time" name="time"></label>
+      <label>Remind
+        <select name="remind">
+          <option value="-1">Never</option>
+          <option value="0">At time</option>
+          <option value="5">5 min before</option>
+          <option value="10">10 min before</option>
+          <option value="30">30 min before</option>
+          <option value="60">1 hour before</option>
+        </select>
+      </label>
+      <label>Repeat
+        <select name="repeat">
+          <option value="none">Never</option>
+          <option value="daily">Daily</option>
+          <option value="weekdays">Weekdays</option>
+          <option value="weekly">Weekly</option>
+        </select>
+      </label>
+      <label class="wide">Goal<select name="goalId"></select></label>
+    </div>
+    <label class="check"><input type="checkbox" name="priority"><span>Mark as priority</span></label>
+    <div class="actions">
+      <button type="button" class="btn ghost danger" data-act="del-task">Delete</button>
+      <span class="grow"></span>
+      <button type="button" class="btn ghost" data-act="close">Cancel</button>
+      <button class="btn primary" value="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="sheet" id="goal-dlg">
+  <form method="dialog" id="goal-form">
+    <div class="grab"></div>
+    <input class="title-input" name="title" placeholder="Name your goal" autocomplete="off" required maxlength="80">
+    <textarea name="why" rows="2" placeholder="Why does it matter?" maxlength="300"></textarea>
+    <div class="fields">
+      <label class="wide">Target date<input type="date" name="due"></label>
+    </div>
+    <div class="swatches" role="radiogroup" aria-label="Color"></div>
+    <div class="actions">
+      <button type="button" class="btn ghost danger" data-act="del-goal">Delete</button>
+      <span class="grow"></span>
+      <button type="button" class="btn ghost" data-act="close">Cancel</button>
+      <button class="btn primary" value="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toasts" aria-live="polite"></div>
+<input type="file" id="import-file" accept="application/json" hidden>
+<script src="app.js"></script>
+</body>
+</html>
