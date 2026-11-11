@@ -31,12 +31,13 @@
 
   <div class="bar">
     <nav class="dock" aria-label="Main">
+      <div class="glow"><i class="ind"></i></div>
       <button data-tab="today" aria-label="Today"></button>
       <button data-tab="goals" aria-label="Goals"></button>
+      <button class="fab" data-act="new" aria-label="New task"></button>
       <button data-tab="focus" aria-label="Focus"></button>
       <button data-tab="you" aria-label="You"></button>
     </nav>
-    <button class="fab" data-act="new" aria-label="New task"></button>
   </div>
 </div>
 
@@ -46,8 +47,10 @@
     <input class="title-input" name="title" placeholder="What needs doing?" autocomplete="off" required maxlength="140">
     <textarea name="notes" rows="2" placeholder="Notes" maxlength="600"></textarea>
     <div class="fields">
-      <label>Date<input type="date" name="date" required></label>
-      <label>Time<input type="time" name="time"></label>
+      <label class="wide">Date<input type="date" name="date" required></label>
+      <label>Start<input type="time" name="time"></label>
+      <label>End<input type="time" name="end"></label>
+      <output class="wide dur-note" id="dur-note"></output>
       <label>Remind
         <select name="remind">
           <option value="-1">Never</option>

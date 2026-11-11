@@ -13,6 +13,14 @@ const today = () => ymd(new Date());
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtTime = t => { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`; };
+// Minutes between a task's start and end (an end before the start means past midnight).
+const mins = t => {
+  if (!t.time || !t.end) return 0;
+  const [a, b] = t.time.split(':').map(Number), [c, d] = t.end.split(':').map(Number);
+  const m = c * 60 + d - (a * 60 + b);
+  return m < 0 ? m + 1440 : m;
+};
+const fmtDur = m => m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}`;
 const fmt = (s, o) => parseYmd(s).toLocaleDateString('en-US', o);
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const COLORS = ['#B9F500', '#9B74FF', '#FF6B9A', '#3DD6FF', '#FFB13D', '#F6F6F8'];
@@ -41,8 +49,8 @@ const fresh = () => {
   return {
     tasks: [
       { id: uid(), title: 'Tap the circle to complete a task', date: t, time: '', remind: -1, repeat: 'none', goalId: '', priority: true, notes: '', done: false },
-      { id: uid(), title: 'Type “Gym 6pm tomorrow” in quick add', date: t, time: '', remind: -1, repeat: 'none', goalId: '', priority: false, notes: '', done: false },
-      { id: uid(), title: 'Read 10 pages', date: t, time: '21:00', remind: 0, repeat: 'daily', goalId: g, priority: false, notes: '', done: false },
+      { id: uid(), title: 'Type “Gym 6-7pm tomorrow” in quick add', date: t, time: '', remind: -1, repeat: 'none', goalId: '', priority: false, notes: '', done: false },
+      { id: uid(), title: 'Read 10 pages', date: t, time: '21:00', end: '21:30', remind: 0, repeat: 'daily', goalId: g, priority: false, notes: '', done: false },
     ],
     goals: [{ id: g, title: 'Read 12 books this year', why: 'Small pages, every day.', color: COLORS[0], due: `${new Date().getFullYear()}-12-31` }],
     settings: { theme: 'dark', notif: false, brief: false, briefAt: '08:00', focusMin: 25 },
@@ -64,9 +72,9 @@ const goalOf = id => S.goals.find(g => g.id === id);
 const tasksOn = d => S.tasks.filter(t => t.date === d);
 const sortTasks = a => a.sort((x, y) => (x.done - y.done) || ((x.time || '99') < (y.time || '99') ? -1 : (x.time || '99') > (y.time || '99') ? 1 : (y.priority - x.priority)));
 
-// ---------- quick-add parser: "Gym 6pm tomorrow !" ----------
+// ---------- quick-add parser: "Gym 6-7pm tomorrow !" ----------
 function parseQuick(text, base) {
-  let t = ` ${text} `, date = base, time = '', priority = false;
+  let t = ` ${text} `, date = base, time = '', end = '', priority = false;
   if (/\s!+\s/.test(t)) { priority = true; t = t.replace(/\s!+(?=\s)/g, ''); }
   const take = (re, fn) => { const m = t.match(re); if (m) { fn(m); t = t.replace(m[0], ' '); } };
   take(/\s(?:on\s+)?(today|tomorrow|tmrw)(?=\s)/i, m => { date = addDays(today(), /today/i.test(m[1]) ? 0 : 1); });
@@ -75,12 +83,22 @@ function parseQuick(text, base) {
     const diff = (want - new Date().getDay() + 7) % 7 || 7;
     date = addDays(today(), diff);
   });
-  take(/\s(?:at\s+)?(\d{1,2})(?::([0-5]\d))?\s*(am|pm)(?=\s)/i, m => {
+  // ranges first: "6-7pm", "9am to 10:30am", "14:00-15:30"
+  take(/\s(?:at\s+|from\s+)?(\d{1,2})(?::([0-5]\d))?\s*(am|pm)?\s*(?:-|–|to)\s*(\d{1,2})(?::([0-5]\d))?\s*(am|pm)(?=\s)/i, m => {
+    const h24 = (h, ap) => (+h % 12) + (/pm/i.test(ap) ? 12 : 0);
+    const e = h24(m[4], m[6]); let s = h24(m[1], m[3] || m[6]);
+    if (!m[3] && s > e) s -= 12; // "11-1pm" starts in the morning
+    time = `${pad(s)}:${m[2] || '00'}`; end = `${pad(e)}:${m[5] || '00'}`;
+  });
+  if (!time) take(/\s(?:at\s+|from\s+)?([01]?\d|2[0-3]):([0-5]\d)\s*(?:-|–|to)\s*([01]?\d|2[0-3]):([0-5]\d)(?=\s)/, m => {
+    time = `${pad(+m[1])}:${m[2]}`; end = `${pad(+m[3])}:${m[4]}`;
+  });
+  if (!time) take(/\s(?:at\s+)?(\d{1,2})(?::([0-5]\d))?\s*(am|pm)(?=\s)/i, m => {
     let h = +m[1] % 12; if (/pm/i.test(m[3])) h += 12;
     time = `${pad(h)}:${m[2] || '00'}`;
   });
   if (!time) take(/\s(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)(?=\s)/, m => { time = `${pad(+m[1])}:${m[2]}`; });
-  return { title: t.replace(/\s+/g, ' ').trim(), date, time, priority };
+  return { title: t.replace(/\s+/g, ' ').trim(), date, time, end, priority };
 }
 
 // ---------- mutations ----------
@@ -175,15 +193,20 @@ function ring(pct, label) {
 }
 function taskRow(t, opts = {}) {
   const g = goalOf(t.goalId);
-  const late = !t.done && (t.date < today() || (t.date === today() && t.time && t.time < `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`));
+  const nowHM = `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`, isToday = t.date === today();
+  const dueHM = !t.end ? t.time : t.end > t.time ? t.end : '99';
+  const late = !t.done && (t.date < today() || (isToday && t.time && dueHM <= nowHM));
+  const live = !t.done && isToday && t.time && t.end > t.time && nowHM >= t.time && nowHM < t.end;
   const meta = [
-    t.time && `<span class="time">${fmtTime(t.time)}</span>`,
+    live && `<span class="live">Now</span>`,
+    t.time && `<span class="time">${fmtTime(t.time)}${t.end ? ' – ' + fmtTime(t.end) : ''}</span>`,
+    mins(t) && `<span class="dur" title="Duration">${icon('focus')}${fmtDur(mins(t))}</span>`,
     opts.showDate && `<span>${fmt(t.date, { month: 'short', day: 'numeric' })}</span>`,
     g && `<span><i class="dot" style="--c:${esc(g.color)}"></i>${esc(g.title)}</span>`,
     t.time && t.remind >= 0 && `<span title="Reminder set">${icon('bell')}</span>`,
     t.repeat !== 'none' && `<span title="Repeats ${t.repeat}">${icon('repeat')}${t.repeat}</span>`,
   ].filter(Boolean).join('');
-  return `<div class="task${t.done ? ' done' : ''}${late ? ' late' : ''}" data-act="edit-task" data-id="${t.id}">
+  return `<div class="task${t.done ? ' done' : ''}${late ? ' late' : ''}${live ? ' now' : ''}" data-act="edit-task" data-id="${t.id}">
     <button class="chk" data-act="toggle" data-id="${t.id}" role="checkbox" aria-checked="${t.done}" aria-label="Complete ${esc(t.title)}">${icon('check')}</button>
     <div class="body"><div class="t">${esc(t.title)}</div>${meta ? `<div class="meta">${meta}</div>` : ''}</div>
     <div class="side">${t.priority ? icon('star') : ''}${opts.move ? `<button class="btn sm line" data-act="move" data-id="${t.id}">Today</button>` : ''}</div>
@@ -203,7 +226,8 @@ function viewToday() {
   }).join('');
   const timed = all.filter(t => t.time), any = all.filter(t => !t.time);
   const over = d === now ? S.tasks.filter(t => !t.done && t.date < now).sort((a, b) => a.date < b.date ? 1 : -1) : [];
-  const status = !all.length ? 'A clear page.' : done === all.length ? 'Everything done. Rest well.' : `${all.length - done} left · ${done} done`;
+  const planned = all.reduce((a, t) => a + mins(t), 0);
+  const status = !all.length ? 'A clear page.' : done === all.length ? 'Everything done. Rest well.' : `${all.length - done} left · ${done} done${planned ? ` · ${fmtDur(planned)} planned` : ''}`;
   return `
     <div class="hero">
       <div><div class="eyebrow">${hello} · ${fmt(d, { month: 'short', day: 'numeric' })}</div>
@@ -220,13 +244,13 @@ function viewToday() {
     ${any.length ? `<h2>Anytime</h2><div class="list">${any.map(t => taskRow(t)).join('')}</div>` : ''}
     ${!all.length && !over.length ? `<div class="empty"><strong>Nothing planned.</strong>Add your first task below.</div>` : ''}
     <form class="quick" id="quick">${icon('plus')}<input name="q" placeholder="Add a task…" aria-label="Quick add task" autocomplete="off" enterkeyhint="done" maxlength="140"></form>
-    <p class="hint">Try <kbd>Gym 6pm tomorrow</kbd> or end with <kbd>!</kbd> for priority.</p>`;
+    <p class="hint">Try <kbd>Gym 6-7pm tomorrow</kbd> or end with <kbd>!</kbd> for priority.</p>`;
 }
 
 function goalStats(g) {
   const ts = S.tasks.filter(t => t.goalId === g.id), done = ts.filter(t => t.done).length;
   const next = sortTasks(ts.filter(t => !t.done && t.date >= today()).sort((a, b) => a.date < b.date ? -1 : 1))[0] || ts.find(t => !t.done);
-  return { total: ts.length, done, pct: ts.length ? done / ts.length : 0, next };
+  return { total: ts.length, done, pct: ts.length ? done / ts.length : 0, next, time: ts.filter(t => t.done).reduce((a, t) => a + mins(t), 0) };
 }
 function viewGoals() {
   const cards = S.goals.map(g => {
@@ -237,7 +261,7 @@ function viewGoals() {
       <div class="head"><i class="dot"></i><h3>${esc(g.title)}</h3><span class="pct">${Math.round(s.pct * 100)}%</span></div>
       ${g.why ? `<p>${esc(g.why)}</p>` : ''}
       <div class="track"><div style="width:${s.pct * 100}%"></div></div>
-      <div class="foot"><span>${s.done}/${s.total} steps${left ? ' · ' + left : ''}</span><button class="btn sm line" data-act="step" data-id="${g.id}">${icon('plus')}Step</button></div>
+      <div class="foot"><span>${s.done}/${s.total} steps${s.time ? ` · ${fmtDur(s.time)} spent` : ''}${left ? ' · ' + left : ''}</span><button class="btn sm line" data-act="step" data-id="${g.id}">${icon('plus')}Step</button></div>
       ${s.next ? `<div class="next">${icon('arrow')}<span>Next</span><b>${esc(s.next.title)}</b></div>` : ''}
     </div>`;
   }).join('');
@@ -273,6 +297,7 @@ function viewYou() {
   const counts = week.map(doneOn), max = Math.max(1, ...counts);
   const wk = S.tasks.filter(t => t.date >= week[0] && t.date <= now);
   const rate = wk.length ? Math.round(wk.filter(t => t.done).length / wk.length * 100) : 0;
+  const spent = wk.filter(t => t.done).reduce((a, t) => a + mins(t), 0);
   const sw = (act, on, label) => `<button class="switch" role="switch" aria-checked="${!!on}" aria-label="${label}" data-act="${act}"></button>`;
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   return `
@@ -281,6 +306,7 @@ function viewYou() {
       <div class="stat"><b>${streak}</b><span>day streak</span></div>
       <div class="stat"><b>${counts.reduce((a, b) => a + b, 0)}</b><span>done this week</span></div>
       <div class="stat"><b>${rate}<small style="font-size:.5em">%</small></b><span>completion</span></div>
+      <div class="stat"><b>${spent ? fmtDur(spent) : '0h'}</b><span>time spent this week</span></div>
     </div>
     <h2>Last 7 days</h2>
     <div class="bars">${week.map((x, i) => `<div class="${counts[i] ? 'has' : ''}${x === now ? ' now' : ''}" title="${counts[i]} done"><i style="height:${counts[i] / max * 100}%"></i><small>${WD[parseYmd(x).getDay()][0]}</small></div>`).join('')}</div>
@@ -303,11 +329,15 @@ let lastTab;
 function render() {
   const v = $('#view');
   v.dataset.tab = ui.tab;
+  v.style.setProperty('--t', (performance.now() / 1000).toFixed(2)); // keeps the hero lights in phase across re-renders
   v.innerHTML = VIEWS[ui.tab]();
   if (lastTab !== ui.tab) { v.style.animation = 'none'; void v.offsetWidth; v.style.animation = ''; scrollTo(0, 0); lastTab = ui.tab; }
   $$('.dock [data-tab]').forEach(b => { const on = b.dataset.tab === ui.tab; b.classList.toggle('on', on); on ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'); });
   $('#bell').classList.toggle('on', notifOn());
+  placeInd();
 }
+function placeInd() { const on = $('.dock .on'); if (on) $('.ind').style.transform = `translateX(${on.offsetLeft + on.offsetWidth / 2}px)`; }
+addEventListener('resize', placeInd);
 function applyTheme() {
   const t = S.settings.theme;
   t === 'auto' ? delete document.documentElement.dataset.theme : document.documentElement.dataset.theme = t;
@@ -318,19 +348,25 @@ function applyTheme() {
 const taskDlg = $('#task-dlg'), taskForm = $('#task-form'), goalDlg = $('#goal-dlg'), goalForm = $('#goal-form');
 function openTask(t, preset = {}) {
   ui.editTask = t ? t.id : null;
-  const v = t || { title: '', notes: '', date: ui.tab === 'today' ? ui.date : today(), time: '', remind: 0, repeat: 'none', goalId: '', priority: false, ...preset };
+  const v = t || { title: '', notes: '', date: ui.tab === 'today' ? ui.date : today(), time: '', end: '', remind: 0, repeat: 'none', goalId: '', priority: false, ...preset };
   const f = taskForm.elements;
   f.goalId.innerHTML = `<option value="">None</option>` + S.goals.map(g => `<option value="${g.id}">${esc(g.title)}</option>`).join('');
-  for (const k of ['title', 'notes', 'date', 'time', 'repeat', 'goalId']) f[k].value = v[k] ?? '';
+  for (const k of ['title', 'notes', 'date', 'time', 'end', 'repeat', 'goalId']) f[k].value = v[k] ?? '';
   f.remind.value = String(v.remind);
   f.priority.checked = !!v.priority;
   $('[data-act=del-task]', taskForm).hidden = !t;
+  durNote();
   taskDlg.showModal();
   if (!t) f.title.focus();
 }
+function durNote() {
+  const f = taskForm.elements, m = mins({ time: f.time.value, end: f.end.value });
+  $('#dur-note').textContent = m ? `Duration · ${fmtDur(m)}` : f.end.value && !f.time.value ? 'Add a start time first.' : '';
+}
+taskForm.addEventListener('input', durNote);
 taskForm.addEventListener('submit', () => {
   const f = taskForm.elements, title = f.title.value.trim(); if (!title) return;
-  const data = { title, notes: f.notes.value.trim(), date: f.date.value || today(), time: f.time.value, remind: +f.remind.value, repeat: f.repeat.value, goalId: f.goalId.value, priority: f.priority.checked };
+  const data = { title, notes: f.notes.value.trim(), date: f.date.value || today(), time: f.time.value, end: f.time.value ? f.end.value : '', remind: +f.remind.value, repeat: f.repeat.value, goalId: f.goalId.value, priority: f.priority.checked };
   const t = S.tasks.find(x => x.id === ui.editTask);
   if (t) Object.assign(t, data); else S.tasks.push({ id: uid(), done: false, ...data });
   silencePast(); save(); render();
@@ -471,7 +507,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { ti
 
 // ---------- boot ----------
 $('#bell').innerHTML = icon('bell');
-$$('.dock button').forEach(b => b.innerHTML = icon(b.dataset.tab) + `<span>${b.getAttribute('aria-label')}</span>`);
+$$('.dock [data-tab]').forEach(b => b.innerHTML = icon(b.dataset.tab) + `<span>${b.getAttribute('aria-label')}</span>`);
 $('.fab').innerHTML = icon('plus');
 applyTheme();
 render();
@@ -480,4 +516,6 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.ser
 tick();
 setInterval(tick, 20000);
 setInterval(paintTimer, 250);
+// Refresh the "Now" badge and late states once a minute, unless the user is mid-typing.
+setInterval(() => { if (ui.tab === 'today' && !$('dialog[open]') && document.activeElement?.tagName !== 'INPUT') render(); }, 60000);
 })();
