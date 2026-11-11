@@ -15,22 +15,23 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmtTime = t => { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`; };
 const fmt = (s, o) => parseYmd(s).toLocaleDateString('en-US', o);
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const COLORS = ['#723BFA', '#B9F500', '#FF5C8A', '#2EC4FF', '#FF9F1C', '#8A8A99'];
+const COLORS = ['#B9F500', '#9B74FF', '#FF6B9A', '#3DD6FF', '#FFB13D', '#F6F6F8'];
 
+const st = d => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+// Icon language: solid, rounded "stadium" shapes with a soft second tone.
 const P = {
-  today: '<rect x="4" y="5" width="16" height="15" rx="4"/><path d="M8 3v4M16 3v4M4 10h16"/>',
-  goals: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".6"/>',
-  focus: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 3h5"/>',
-  you: '<path d="M5 20v-6M12 20V5M19 20v-9"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>',
-  bell: '<path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2h-15zM10 21h4"/>',
-  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  star: '<path class="star" d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/>',
-  repeat: '<path d="M4 11V9.5A3.5 3.5 0 0 1 7.5 6H19l-3-3M20 13v1.5a3.5 3.5 0 0 1-3.5 3.5H5l3 3"/>',
-  left: '<path d="M14.5 6l-6 6 6 6"/>',
-  right: '<path d="M9.5 6l6 6-6 6"/>',
-  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
-  flag: '<path d="M6 21V4h11l-2 4 2 4H6"/>',
+  today: '<rect x="3" y="4.5" width="18" height="16.5" rx="5.5" opacity=".38"/><rect x="6.4" y="2" width="3" height="6" rx="1.5"/><rect x="14.6" y="2" width="3" height="6" rx="1.5"/><rect x="7" y="12.2" width="10" height="4" rx="2"/>',
+  goals: '<circle cx="12" cy="12" r="9.5" opacity=".3"/><circle cx="12" cy="12" r="5.6" opacity=".55"/><circle cx="12" cy="12" r="2.4"/>',
+  focus: '<circle cx="12" cy="13.2" r="8.3" opacity=".38"/><path d="M12 13.2V4.9a8.3 8.3 0 0 1 7.19 12.45z"/><rect x="9.2" y="1.4" width="5.6" height="2.6" rx="1.3"/>',
+  you: '<rect x="3.2" y="11" width="4.8" height="10" rx="2.4" opacity=".45"/><rect x="9.6" y="3" width="4.8" height="18" rx="2.4"/><rect x="16" y="7.5" width="4.8" height="13.5" rx="2.4" opacity=".45"/>',
+  plus: '<rect x="10.3" y="3" width="3.4" height="18" rx="1.7"/><rect x="3" y="10.3" width="18" height="3.4" rx="1.7"/>',
+  bell: '<path d="M12 2.6A6.4 6.4 0 0 0 5.6 9v4.1l-1.5 3.3A1.1 1.1 0 0 0 5.1 18h13.8a1.1 1.1 0 0 0 1-1.6l-1.5-3.3V9A6.4 6.4 0 0 0 12 2.6z"/><rect x="9.4" y="19.4" width="5.2" height="2.4" rx="1.2" opacity=".55"/>',
+  check: st('M5 12.5l4.5 4.5L19 7.5'),
+  star: '<path d="M12 2.8l2.75 5.6 6.15.9-4.45 4.3 1.05 6.1L12 16.8l-5.5 2.9 1.05-6.1L3.1 9.3l6.15-.9z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+  repeat: st('M4 11V9.8A3.8 3.8 0 0 1 7.8 6H19l-3-3M20 13v1.2a3.8 3.8 0 0 1-3.8 3.8H5l3 3'),
+  left: st('M14.5 6l-6 6 6 6'),
+  right: st('M9.5 6l6 6-6 6'),
+  arrow: st('M5 12h14M13 6l6 6-6 6'),
 };
 const icon = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
 
@@ -251,16 +252,16 @@ function viewGoals() {
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
 function viewFocus() {
   const open = sortTasks(tasksOn(today()).filter(t => !t.done));
-  const total = S.settings.focusMin * 60000, c = 2 * Math.PI * 96;
+  const total = S.settings.focusMin * 60000, c = 2 * Math.PI * 94;
   const left = timer.running ? timer.end - Date.now() : timer.left;
   return `
     <div class="hero"><div><div class="eyebrow">Deep work</div><h1>Focus<em>.</em></h1><p>One thing. One timer. Nothing else.</p></div></div>
     <div class="focus">
-      <div class="dial"><svg viewBox="0 0 200 200"><circle class="trk" cx="100" cy="100" r="96"/><circle class="bar" id="dial-bar" cx="100" cy="100" r="96" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - left / total)}"/></svg>
+      <div class="dial"><svg viewBox="0 0 200 200"><defs><linearGradient id="dial-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B9F500"/><stop offset="1" stop-color="#723BFA"/></linearGradient></defs><circle class="trk" cx="100" cy="100" r="94"/><circle class="bar" id="dial-bar" cx="100" cy="100" r="94" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - left / total)}"/></svg>
         <div class="read"><b id="dial-time" class="num">${mmss(left)}</b><span class="eyebrow">${timer.running ? 'In session' : left < total ? 'Paused' : 'Ready'}</span></div></div>
       <div class="seg" role="group" aria-label="Session length">${[15, 25, 50].map(m => `<button data-act="len" data-m="${m}" class="${S.settings.focusMin === m ? 'on' : ''}">${m} min</button>`).join('')}</div>
       <select id="focus-task" aria-label="Task to focus on"><option value="">No task — just focus</option>${open.map(t => `<option value="${t.id}" ${timer.taskId === t.id ? 'selected' : ''}>${esc(t.title)}</option>`).join('')}</select>
-      <div class="row"><button class="btn accent" data-act="timer">${timer.running ? 'Pause' : left < total ? 'Resume' : 'Start session'}</button><button class="btn line" data-act="reset">Reset</button></div>
+      <div class="row"><button class="btn primary" data-act="timer">${timer.running ? 'Pause' : left < total ? 'Resume' : 'Start session'}</button><button class="btn line" data-act="reset">Reset</button></div>
     </div>`;
 }
 
@@ -274,7 +275,6 @@ function viewYou() {
   const wk = S.tasks.filter(t => t.date >= week[0] && t.date <= now);
   const rate = wk.length ? Math.round(wk.filter(t => t.done).length / wk.length * 100) : 0;
   const sw = (act, on, label) => `<button class="switch" role="switch" aria-checked="${!!on}" aria-label="${label}" data-act="${act}"></button>`;
-  const th = S.settings.theme;
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   return `
     <div class="hero"><div><div class="eyebrow">Your rhythm</div><h1>You<em>.</em></h1></div></div>
@@ -290,8 +290,6 @@ function viewYou() {
       <div class="rowi"><div class="grow">Notifications<small>${!canNotify() ? 'Install the app to enable on this device' : Notification.permission === 'denied' ? 'Blocked in browser settings' : 'Nudges when a task is due'}</small></div>${sw('notif', notifOn(), 'Notifications')}</div>
       <div class="rowi"><div class="grow">Daily briefing<small>A morning summary of your day</small></div><input type="time" id="brief-at" value="${S.settings.briefAt}" aria-label="Briefing time">${sw('brief', S.settings.brief, 'Daily briefing')}</div>
     </div>
-    <h2>Appearance</h2>
-    <div class="rows"><div class="rowi"><div class="grow">Theme</div><div class="seg">${['auto', 'light', 'dark'].map(t => `<button data-act="theme" data-t="${t}" class="${th === t ? 'on' : ''}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div></div></div>
     <h2>App</h2>
     <div class="rows">
       ${standalone ? '' : `<div class="rowi"><div class="grow">Install Kairo<small>${installEvt ? 'Add it to your home screen' : 'Browser menu → “Add to Home Screen” / “Install app”'}</small></div><button class="btn sm primary" data-act="install" ${installEvt ? '' : 'hidden'}>Install</button></div>`}
@@ -305,6 +303,7 @@ const VIEWS = { today: viewToday, goals: viewGoals, focus: viewFocus, you: viewY
 let lastTab;
 function render() {
   const v = $('#view');
+  v.dataset.tab = ui.tab;
   v.innerHTML = VIEWS[ui.tab]();
   if (lastTab !== ui.tab) { v.style.animation = 'none'; void v.offsetWidth; v.style.animation = ''; scrollTo(0, 0); lastTab = ui.tab; }
   $$('.dock [data-tab]').forEach(b => { const on = b.dataset.tab === ui.tab; b.classList.toggle('on', on); on ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'); });
@@ -374,7 +373,7 @@ function paintTimer() {
   document.title = `${mmss(left)} · Kairo`;
   const b = $('#dial-bar'); if (!b) return;
   $('#dial-time').textContent = mmss(left);
-  b.style.strokeDashoffset = 2 * Math.PI * 96 * (1 - left / total);
+  b.style.strokeDashoffset = 2 * Math.PI * 94 * (1 - left / total);
 }
 
 // ---------- events ----------
@@ -429,7 +428,7 @@ const ACT = {
   wipe: () => { if (confirm('Erase all tasks and goals on this device?')) { S.tasks = []; S.goals = []; S.fired = {}; save(); render(); } },
 };
 document.addEventListener('click', e => {
-  const tab = e.target.closest('[data-tab]');
+  const tab = e.target.closest('.dock [data-tab]');
   if (tab) { ui.tab = tab.dataset.tab; if (ui.tab === 'today' && lastTab === 'today') ui.date = today(); return render(); }
   const el = e.target.closest('[data-act]');
   if (el && ACT[el.dataset.act]) { if (el.type !== 'submit') e.preventDefault(); ACT[el.dataset.act](el); }
