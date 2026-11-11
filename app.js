@@ -670,6 +670,10 @@ addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = 
 addEventListener('appinstalled', () => { installEvt = null; toast('Kairo installed', 'Find it on your home screen.'); render(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); paintTimer(); if (!$('dialog[open]') && document.activeElement?.tagName !== 'INPUT') render(); } });
 
+// No zooming: block pinch (iOS ignores the viewport flag) and ctrl/trackpad zoom gestures.
+for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, e => e.preventDefault());
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
 // ---------- boot ----------
 $('#bell').innerHTML = icon('bell');
 $('#go-focus').innerHTML = icon('focus');

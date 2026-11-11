@@ -22,7 +22,9 @@
 }
 
 * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
-html { background: var(--bg); }
+html { background: var(--bg); touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+/* iOS zooms into any field smaller than 16px on focus */
+@media (pointer: coarse) { input, select, textarea { font-size: 16px !important; } }
 body { font: 400 15px/1.45 var(--sans); color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; min-height: 100dvh; overscroll-behavior-y: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { background: none; border: 0; cursor: pointer; padding: 0; }
