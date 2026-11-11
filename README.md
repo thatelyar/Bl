@@ -17,6 +17,9 @@
 - **Today** — week strip, scheduled + anytime lists, progress ring, carried-over tasks.
 - **Quick add** — type `Gym 6-7pm tomorrow !` and Kairo fills in the date, start, end and priority.
 - **Start & end times** — every task can have both; Kairo shows the duration, what is happening now, and time spent per goal and per week.
+- **Calendar** — day, 3-day and week time grid. Tasks appear as blocks sized by their duration; tap a slot to add, drag to move, drag the bottom edge to resize.
+- **Insights** — filter by today, 7 days, 30 days, all time or a custom range and see where your time went, grouped by tag, goal or task.
+- **Tags** — add `#work` in quick add or in the task form.
 - **Goals** — set a goal, link tasks as steps, watch progress and days left.
 - **Reminders** — per-task notifications (at time, or 5–60 min before) and an optional daily briefing.
 - **Focus** — 15 / 25 / 50-minute sessions tied to a task.

@@ -24,7 +24,7 @@
       <img src="icons/icon.svg" alt="" width="32" height="32">
       <span>kairo</span>
     </a>
-    <button class="icon-btn" id="bell" aria-label="Notifications"></button>
+    <div class="top-act"><button class="icon-btn" id="go-focus" data-act="go-focus" aria-label="Focus timer"></button><button class="icon-btn" id="bell" aria-label="Notifications"></button></div>
   </header>
 
   <main id="view" tabindex="-1"></main>
@@ -33,10 +33,10 @@
     <nav class="dock" aria-label="Main">
       <div class="glow"><i class="ind"></i></div>
       <button data-tab="today" aria-label="Today"></button>
-      <button data-tab="goals" aria-label="Goals"></button>
+      <button data-tab="cal" aria-label="Calendar"></button>
       <button class="fab" data-act="new" aria-label="New task"></button>
-      <button data-tab="focus" aria-label="Focus"></button>
-      <button data-tab="you" aria-label="You"></button>
+      <button data-tab="goals" aria-label="Goals"></button>
+      <button data-tab="you" aria-label="Insights"></button>
     </nav>
   </div>
 </div>
@@ -69,7 +69,8 @@
           <option value="weekly">Weekly</option>
         </select>
       </label>
-      <label class="wide">Goal<select name="goalId"></select></label>
+      <label>Goal<select name="goalId"></select></label>
+      <label>Tag<input type="text" name="tag" list="tag-list" placeholder="work, health…" maxlength="20" autocomplete="off" autocapitalize="off"></label>
     </div>
     <label class="check"><input type="checkbox" name="priority"><span>Mark as priority</span></label>
     <div class="actions">
@@ -99,6 +100,7 @@
   </form>
 </dialog>
 
+<datalist id="tag-list"></datalist>
 <div id="toasts" aria-live="polite"></div>
 <input type="file" id="import-file" accept="application/json" hidden>
 <script src="app.js"></script>
