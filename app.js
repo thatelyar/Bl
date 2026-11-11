@@ -15,7 +15,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmtTime = t => { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`; };
 const fmt = (s, o) => parseYmd(s).toLocaleDateString('en-US', o);
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const COLORS = ['#E5532A', '#D9A036', '#6F9A6B', '#5B86C4', '#9A6FB0', '#8A867C'];
+const COLORS = ['#723BFA', '#B9F500', '#FF5C8A', '#2EC4FF', '#FF9F1C', '#8A8A99'];
 
 const P = {
   today: '<rect x="4" y="5" width="16" height="15" rx="4"/><path d="M8 3v4M16 3v4M4 10h16"/>',
@@ -44,8 +44,8 @@ const fresh = () => {
       { id: uid(), title: 'Type “Gym 6pm tomorrow” in quick add', date: t, time: '', remind: -1, repeat: 'none', goalId: '', priority: false, notes: '', done: false },
       { id: uid(), title: 'Read 10 pages', date: t, time: '21:00', remind: 0, repeat: 'daily', goalId: g, priority: false, notes: '', done: false },
     ],
-    goals: [{ id: g, title: 'Read 12 books this year', why: 'Small pages, every day.', color: COLORS[2], due: `${new Date().getFullYear()}-12-31` }],
-    settings: { theme: 'auto', notif: false, brief: false, briefAt: '08:00', focusMin: 25 },
+    goals: [{ id: g, title: 'Read 12 books this year', why: 'Small pages, every day.', color: COLORS[0], due: `${new Date().getFullYear()}-12-31` }],
+    settings: { theme: 'dark', notif: false, brief: false, briefAt: '08:00', focusMin: 25 },
     fired: {},
   };
 };
