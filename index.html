@@ -72,6 +72,16 @@
       <label>Goal<select name="goalId"></select></label>
       <label>Tag<input type="text" name="tag" list="tag-list" placeholder="work, health…" maxlength="20" autocomplete="off" autocapitalize="off"></label>
     </div>
+    <div class="breaks">
+      <div class="brk-head"><span>Breaks &amp; interruptions</span><output id="brk-total"></output></div>
+      <div id="brk-list"></div>
+      <div class="brk-add">
+        <input type="time" id="brk-start" aria-label="Break started at">
+        <select id="brk-len" aria-label="Break length"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="20">20 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">1 hour</option><option value="90">1.5 hours</option></select>
+        <select id="brk-kind" aria-label="Kind"><option value="rest">Rest</option><option value="interrupt">Interruption</option></select>
+        <button type="button" class="btn sm line" data-act="brk-add">Add</button>
+      </div>
+    </div>
     <label class="check"><input type="checkbox" name="priority"><span>Mark as priority</span></label>
     <div class="actions">
       <button type="button" class="btn ghost danger" data-act="del-task">Delete</button>

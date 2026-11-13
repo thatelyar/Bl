@@ -20,6 +20,9 @@ const mins = t => {
   const m = c * 60 + d - (a * 60 + b);
   return m < 0 ? m + 1440 : m;
 };
+// Breaks logged inside a task: [{ s: 'HH:MM', m: minutes, k: 'rest' | 'interrupt' }]
+const brkMins = (t, k) => (t.breaks || []).reduce((a, b) => a + (!k || b.k === k ? b.m : 0), 0);
+const netMins = t => Math.max(0, mins(t) - brkMins(t)); // time actually worked
 const fmtDur = m => m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}`;
 const toMin = hm => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
 const toHM = m => { m = Math.max(0, Math.min(1439, m)); return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
@@ -39,6 +42,7 @@ const P = {
   you: '<circle class="f" cx="12" cy="8.2" r="3.7"/><path class="f" d="M4.8 20c1-3.5 3.8-5.2 7.2-5.2s6.2 1.7 7.2 5.2z"/>',
   cal: '<rect class="f" x="3.5" y="5" width="17" height="15.5" rx="4"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   chart: '<path class="f" d="M4 20v-9h4v9zM10 20V4h4v16zM16 20v-6h4v6z"/>',
+  pause: '<path d="M9 5.5v13M15 5.5v13"/>',
   plus: '<path d="M12 4.5v15M4.5 12h15"/>',
   bell: '<path class="f" d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.4 2H4.6z"/><path d="M10 21.2h4"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
@@ -73,7 +77,7 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch
 
 const params = new URLSearchParams(location.search);
 const ui = { tab: ['today', 'cal', 'goals', 'focus', 'you'].includes(params.get('tab')) ? params.get('tab') : 'today', date: today(), editTask: null, editGoal: null,
-  calMode: innerWidth < 700 ? '3' : 'week', calScroll: null,
+  calMode: innerWidth < 700 ? '3' : 'week', calScroll: null, breaks: [],
   an: { range: '7', group: 'tag', all: false, from: addDays(today(), -6), to: today() } };
 const timer = { running: false, end: 0, left: S.settings.focusMin * 60000, taskId: '' };
 let installEvt = null;
@@ -126,7 +130,7 @@ function toggleTask(id) {
   // A finished repeating task plants its next occurrence, once.
   if (t.done && t.repeat !== 'none' && !t.spawned) {
     t.spawned = true;
-    S.tasks.push({ ...t, id: uid(), date: nextDate(t), done: false, spawned: false });
+    S.tasks.push({ ...t, id: uid(), date: nextDate(t), done: false, spawned: false, breaks: [] });
   }
   save();
 }
@@ -210,9 +214,10 @@ function taskRow(t, opts = {}) {
   const late = !t.done && (t.date < today() || (isToday && t.time && dueHM <= nowHM));
   const live = !t.done && isToday && t.time && t.end > t.time && nowHM >= t.time && nowHM < t.end;
   const meta = [
-    live && `<span class="live">Now</span>`,
+    t.breakAt ? `<span class="live onbrk">On break</span>` : live && `<span class="live">Now</span>`,
     t.time && `<span class="time">${fmtTime(t.time)}${t.end ? ' – ' + fmtTime(t.end) : ''}</span>`,
     mins(t) && `<span class="dur" title="Duration">${icon('focus')}${fmtDur(mins(t))}</span>`,
+    brkMins(t) && `<span class="lost" title="Breaks and interruptions">${icon('pause')}−${fmtDur(brkMins(t))}</span>`,
     opts.showDate && `<span>${fmt(t.date, { month: 'short', day: 'numeric' })}</span>`,
     t.tag && `<span class="tag" style="--c:${tagColor(t.tag)}">#${esc(t.tag)}</span>`,
     g && `<span><i class="dot" style="--c:${esc(g.color)}"></i>${esc(g.title)}</span>`,
@@ -222,7 +227,7 @@ function taskRow(t, opts = {}) {
   return `<div class="task${t.done ? ' done' : ''}${late ? ' late' : ''}${live ? ' now' : ''}" data-act="edit-task" data-id="${t.id}">
     <button class="chk" data-act="toggle" data-id="${t.id}" role="checkbox" aria-checked="${t.done}" aria-label="Complete ${esc(t.title)}">${icon('check')}</button>
     <div class="body"><div class="t">${esc(t.title)}</div>${meta ? `<div class="meta">${meta}</div>` : ''}</div>
-    <div class="side">${t.priority ? icon('star') : ''}${opts.move ? `<button class="btn sm line" data-act="move" data-id="${t.id}">Today</button>` : ''}</div>
+    <div class="side">${t.priority ? icon('star') : ''}${t.breakAt ? `<button class="btn sm primary" data-act="brk-stop" data-id="${t.id}">Resume</button>` : live ? `<button class="btn sm line" data-act="brk-start" data-id="${t.id}">${icon('pause')}Break</button>` : ''}${opts.move ? `<button class="btn sm line" data-act="move" data-id="${t.id}">Today</button>` : ''}</div>
   </div>`;
 }
 
@@ -263,7 +268,7 @@ function viewToday() {
 function goalStats(g) {
   const ts = S.tasks.filter(t => t.goalId === g.id), done = ts.filter(t => t.done).length;
   const next = sortTasks(ts.filter(t => !t.done && t.date >= today()).sort((a, b) => a.date < b.date ? -1 : 1))[0] || ts.find(t => !t.done);
-  return { total: ts.length, done, pct: ts.length ? done / ts.length : 0, next, time: ts.filter(t => t.done).reduce((a, t) => a + mins(t), 0) };
+  return { total: ts.length, done, pct: ts.length ? done / ts.length : 0, next, time: ts.filter(t => t.done).reduce((a, t) => a + netMins(t), 0) };
 }
 function viewGoals() {
   const cards = S.goals.map(g => {
@@ -332,7 +337,7 @@ function viewCal() {
   }).join('');
   const cols = days.map(d => `<div class="cal-col" data-act="cal-new" data-d="${d}">${layoutDay(tasksOn(d)).map(e => {
     const h = (e.e - e.s) / 60 * HOUR;
-    return `<div class="ev${e.t.done ? ' done' : ''}" data-act="edit-task" data-id="${e.t.id}" style="--c:${esc(colorOf(e.t))};top:${e.s / 60 * HOUR}px;height:${h}px;left:calc(${e.col / e.cols * 100}% + 2px);width:calc(${100 / e.cols}% - 4px)"><b>${esc(e.t.title)}</b>${h >= 40 ? `<small>${shortT(e.t.time)}${e.t.end ? '–' + shortT(e.t.end) : ''}</small>` : ''}<i class="rz"></i></div>`;
+    return `<div class="ev${e.t.done ? ' done' : ''}" data-act="edit-task" data-id="${e.t.id}" style="--c:${esc(colorOf(e.t))};top:${e.s / 60 * HOUR}px;height:${h}px;left:calc(${e.col / e.cols * 100}% + 2px);width:calc(${100 / e.cols}% - 4px)"><b>${esc(e.t.title)}</b>${h >= 40 ? `<small>${shortT(e.t.time)}${e.t.end ? '–' + shortT(e.t.end) : ''}</small>` : ''}${(e.t.breaks || []).map(b => { const o = toMin(b.s) - e.s; return o >= 0 && o < e.e - e.s ? `<u class="bk" style="top:${o / 60 * HOUR}px;height:${Math.min(b.m, e.e - e.s - o) / 60 * HOUR}px" title="${b.k === 'interrupt' ? 'Interruption' : 'Break'} · ${fmtDur(b.m)}"></u>` : ''; }).join('')}<i class="rz"></i></div>`;
   }).join('')}${d === now ? `<div class="nowline" style="top:${nm / 60 * HOUR}px"></div>` : ''}</div>`).join('');
   const hours = Array.from({ length: 23 }, (_, i) => `<span style="top:${(i + 1) * HOUR}px">${(i + 1) % 12 || 12}${i + 1 < 12 ? 'am' : 'pm'}</span>`).join('');
   return `
@@ -366,9 +371,11 @@ function viewYou() {
   const keyOf = t => A.group === 'goal' ? (goalOf(t.goalId)?.title || 'No goal') : A.group === 'task' ? t.title : t.tag ? '#' + t.tag : 'Untagged';
   const colOf = t => A.group === 'goal' ? (goalOf(t.goalId)?.color || '#6E6D7E') : A.group === 'task' ? colorOf(t) : t.tag ? tagColor(t.tag) : '#6E6D7E';
   const groups = new Map();
-  for (const t of items) { const k = keyOf(t), g = groups.get(k) || { name: k, color: colOf(t), min: 0, n: 0 }; g.min += mins(t); g.n++; groups.set(k, g); }
+  for (const t of items) { const k = keyOf(t), g = groups.get(k) || { name: k, color: colOf(t), min: 0, brk: 0, n: 0 }; g.min += netMins(t); g.brk += brkMins(t); g.n++; groups.set(k, g); }
   const rows = [...groups.values()].filter(g => g.min).sort((a, b) => b.min - a.min);
   const total = rows.reduce((a, g) => a + g.min, 0);
+  const lost = items.reduce((a, t) => a + brkMins(t), 0), lostRest = items.reduce((a, t) => a + brkMins(t, 'rest'), 0);
+  const focusPct = total + lost ? Math.round(total / (total + lost) * 100) : 100;
   const untimed = items.filter(t => !mins(t)).length;
   const doneN = inRange.filter(t => t.done).length;
   const rate = inRange.length ? Math.round(doneN / inRange.length * 100) : 0;
@@ -377,32 +384,35 @@ function viewYou() {
   while (doneOn(d)) { streak++; d = addDays(d, -1); }
   const nDays = Math.round((parseYmd(to) - parseYmd(from)) / 864e5) + 1;
   const days = nDays <= 31 ? Array.from({ length: nDays }, (_, i) => addDays(from, i)) : [];
-  const perDay = days.map(x => items.filter(t => t.date === x).reduce((a, t) => a + mins(t), 0)), max = Math.max(1, ...perDay);
+  const perDay = days.map(x => items.filter(t => t.date === x).reduce((a, t) => a + netMins(t), 0)), max = Math.max(1, ...perDay);
   const step = Math.ceil(nDays / 8);
   const seg = (act, cur, opts) => `<div class="seg full">${opts.map(([v, l]) => `<button data-act="${act}" data-v="${v}" class="${cur === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   const sw = (act, on, label) => `<button class="switch" role="switch" aria-checked="${!!on}" aria-label="${label}" data-act="${act}"></button>`;
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   const md = { month: 'short', day: 'numeric' };
   return `
-    <div class="hero"><div><div class="eyebrow">${from === to ? fmt(from, md) : `${fmt(from, md)} – ${fmt(to, md)}`}</div><h1>Insights<em>.</em></h1><p>Where your time actually went.</p></div></div>
+    <div class="hero"><div><div class="eyebrow">${from === to ? fmt(from, md) : `${fmt(from, md)} – ${fmt(to, md)}`}</div><h1>Insights<em>.</em></h1><p>Where your time actually went${streak > 1 ? ` · ${streak}-day streak` : ''}.</p></div></div>
     <div class="filters">
       ${seg('an-range', A.range, [['today', 'Today'], ['7', '7 days'], ['30', '30 days'], ['all', 'All'], ['custom', 'Custom']])}
       ${A.range === 'custom' ? `<div class="custom"><input type="date" id="an-from" value="${A.from}" aria-label="From"><input type="date" id="an-to" value="${A.to}" aria-label="To"></div>` : ''}
     </div>
     <div class="stats">
-      <div class="stat"><b>${total ? fmtDur(total) : '0h'}</b><span>${A.all ? 'time planned' : 'time spent'}</span></div>
+      <div class="stat"><b>${total ? fmtDur(total) : '0h'}</b><span>${A.all ? 'net time planned' : 'time actually worked'}</span></div>
       <div class="stat"><b>${doneN}</b><span>tasks done</span></div>
       <div class="stat"><b>${rate}<small style="font-size:.5em">%</small></b><span>completion</span></div>
-      <div class="stat"><b>${streak}</b><span>day streak</span></div>
+      <div class="stat"><b>${lost ? fmtDur(lost) : '0m'}</b><span>lost to breaks · ${focusPct}% focused</span></div>
     </div>
     <h2>Time by</h2>
     ${seg('an-group', A.group, [['tag', 'Tag'], ['goal', 'Goal'], ['task', 'Task']])}
     <div class="brk">
       ${rows.length ? `<div class="stack" role="img" aria-label="Share of time">${rows.map(g => `<i style="--c:${esc(g.color)};flex:${g.min}" title="${esc(g.name)} · ${fmtDur(g.min)}"></i>`).join('')}</div>
-      ${rows.map(g => `<div class="brow"><div class="n"><i class="dot" style="--c:${esc(g.color)}"></i><span>${esc(g.name)}</span></div><div class="v">${fmtDur(g.min)} · ${Math.round(g.min / total * 100)}%</div><div class="track"><div style="--c:${esc(g.color)};width:${g.min / rows[0].min * 100}%"></div></div></div>`).join('')}`
+      ${rows.map(g => `<div class="brow"><div class="n"><i class="dot" style="--c:${esc(g.color)}"></i><span>${esc(g.name)}</span></div><div class="v">${fmtDur(g.min)} · ${Math.round(g.min / total * 100)}%${g.brk ? ` <em>−${fmtDur(g.brk)}</em>` : ''}</div><div class="track"><div style="--c:${esc(g.color)};width:${g.min / rows[0].min * 100}%"></div></div></div>`).join('')}`
       : `<div class="empty"><strong>No time yet.</strong>${A.all ? 'Give tasks a start and end time.' : 'Complete tasks that have a start and end time.'}</div>`}
       ${untimed ? `<p class="hint">${untimed} task${untimed > 1 ? 's' : ''} without a duration ${untimed > 1 ? 'are' : 'is'} not counted.</p>` : ''}
     </div>
+    ${lost ? `<div class="lostbox"><div class="stack"><i style="--c:var(--lime);flex:${total}" title="Worked · ${fmtDur(total)}"></i><i style="--c:#FF6B6B;flex:${lost}" title="Lost · ${fmtDur(lost)}"></i></div>
+      <div class="lostrow"><span><i class="dot" style="--c:var(--lime)"></i>Worked <b>${fmtDur(total)}</b></span><span><i class="dot" style="--c:#FF6B6B"></i>Lost <b>${fmtDur(lost)}</b></span></div>
+      <p class="hint">Rest ${fmtDur(lostRest)} · Interruptions ${fmtDur(lost - lostRest)}</p></div>` : ''}
     <div class="rows" style="margin-top:8px"><div class="rowi"><div class="grow">Include unfinished<small>Count planned time, not only completed</small></div>${sw('an-all', A.all, 'Include unfinished tasks')}</div></div>
     ${days.length > 1 ? `<h2>Per day</h2>
     <div class="bars" style="grid-template-columns:repeat(${nDays},1fr);gap:${nDays > 10 ? 3 : 10}px">${days.map((x, i) => `<div class="${perDay[i] ? 'has' : ''}${x === now ? ' now' : ''}" title="${fmt(x, md)} · ${fmtDur(perDay[i])}"><i style="height:${perDay[i] / max * 100}%"></i><small>${nDays <= 7 ? WD[parseYmd(x).getDay()][0] : i % step === 0 ? parseYmd(x).getDate() : '&nbsp;'}</small></div>`).join('')}</div>` : ''}
@@ -454,19 +464,29 @@ function openTask(t, preset = {}) {
   f.remind.value = String(v.remind);
   f.priority.checked = !!v.priority;
   $('[data-act=del-task]', taskForm).hidden = !t;
+  ui.breaks = (t?.breaks || []).map(b => ({ ...b }));
+  $('#brk-start').value = v.time || '';
+  paintBreaks();
   durNote();
   taskDlg.showModal();
   if (!t) f.title.focus();
 }
+function paintBreaks() {
+  const total = ui.breaks.reduce((a, b) => a + b.m, 0);
+  $('#brk-total').textContent = total ? `−${fmtDur(total)}` : '';
+  $('#brk-list').innerHTML = ui.breaks.map((b, i) => `<div class="brk-item"><span class="num">${fmtTime(b.s)}</span><b>${fmtDur(b.m)}</b><span class="grow">${b.k === 'interrupt' ? 'Interruption' : 'Rest'}</span><button type="button" class="btn sm ghost danger" data-act="brk-del" data-i="${i}" aria-label="Remove break">Remove</button></div>`).join('');
+}
 function durNote() {
   const f = taskForm.elements, m = mins({ time: f.time.value, end: f.end.value });
-  $('#dur-note').textContent = m ? `Duration · ${fmtDur(m)}` : f.end.value && !f.time.value ? 'Add a start time first.' : '';
+  const bm = ui.breaks.reduce((a, b) => a + b.m, 0);
+  $('#dur-note').textContent = m ? `Duration · ${fmtDur(m)}${bm ? ` · ${fmtDur(Math.max(0, m - bm))} net` : ''}` : f.end.value && !f.time.value ? 'Add a start time first.' : '';
 }
 taskForm.addEventListener('input', durNote);
 taskForm.addEventListener('submit', () => {
   const f = taskForm.elements, title = f.title.value.trim(); if (!title) return;
   const data = { title, notes: f.notes.value.trim(), date: f.date.value || today(), time: f.time.value, end: f.time.value ? f.end.value : '', remind: +f.remind.value, repeat: f.repeat.value, goalId: f.goalId.value, tag: cleanTag(f.tag.value), priority: f.priority.checked };
   const t = S.tasks.find(x => x.id === ui.editTask);
+  data.breaks = ui.breaks.sort((a, b) => a.s < b.s ? -1 : 1);
   if (t) Object.assign(t, data); else S.tasks.push({ id: uid(), done: false, ...data });
   silencePast(); save(); render();
   if (!t && data.time && data.remind >= 0 && !notifOn() && canNotify() && Notification.permission !== 'denied')
@@ -536,6 +556,20 @@ const ACT = {
   },
   'an-range': el => { ui.an.range = el.dataset.v; render(); },
   'an-group': el => { ui.an.group = el.dataset.v; render(); },
+  'brk-add': () => {
+    const s = $('#brk-start').value;
+    if (!s) return toast('Pick when the break started');
+    ui.breaks.push({ s, m: +$('#brk-len').value, k: $('#brk-kind').value });
+    paintBreaks(); durNote();
+  },
+  'brk-del': el => { ui.breaks.splice(+el.dataset.i, 1); paintBreaks(); durNote(); },
+  'brk-start': el => { const t = S.tasks.find(x => x.id === el.dataset.id); t.breakAt = Date.now(); save(); render(); },
+  'brk-stop': el => {
+    const t = S.tasks.find(x => x.id === el.dataset.id), at = new Date(t.breakAt);
+    const b = { s: `${pad(at.getHours())}:${pad(at.getMinutes())}`, m: Math.max(1, Math.round((Date.now() - t.breakAt) / 60000)), k: 'rest' };
+    (t.breaks ||= []).push(b); delete t.breakAt; save(); render();
+    toast('Break logged', `${fmtDur(b.m)} on “${t.title}”`, { label: 'It was an interruption', fn: () => { b.k = 'interrupt'; save(); render(); } });
+  },
   'an-all': () => { ui.an.all = !ui.an.all; render(); },
   'new-goal': () => openGoal(null),
   'edit-goal': el => openGoal(goalOf(el.dataset.id)),
@@ -590,6 +624,7 @@ const endDrag = commit => {
   if (!drag) return;
   const g = drag; drag = null;
   if (commit && g.moved) {
+    if (g.mode === 'move') for (const b of g.t.breaks || []) b.s = toHM(toMin(b.s) + g.s - g.s0); // breaks travel with the block
     g.t.time = toHM(g.s);
     if (g.mode === 'resize' || g.hadEnd) g.t.end = toHM(g.s + g.d);
     g.t.date = g.day;
