@@ -257,12 +257,14 @@ function viewToday() {
       <div class="days">${days}</div>
       <button class="nav" data-act="week" data-n="7" aria-label="Next week">${icon('right')}</button>
     </div>
-    ${over.length ? `<h2>Carried over</h2><div class="list">${over.map(t => taskRow(t, { showDate: true, move: true })).join('')}</div>` : ''}
-    ${timed.length ? `<h2>Scheduled</h2><div class="list">${timed.map(t => taskRow(t)).join('')}</div>` : ''}
-    ${any.length ? `<h2>Anytime</h2><div class="list">${any.map(t => taskRow(t)).join('')}</div>` : ''}
-    ${!all.length && !over.length ? `<div class="empty"><strong>Nothing planned.</strong>Add your first task below.</div>` : ''}
-    <form class="quick" id="quick">${icon('plus')}<input name="q" placeholder="Add a task…" aria-label="Quick add task" autocomplete="off" enterkeyhint="done" maxlength="140"></form>
-    <p class="hint">Try <kbd>Gym 6-7pm tomorrow #health</kbd> · end with <kbd>!</kbd> for priority.</p>`;
+    <div class="secs">
+    ${over.length ? `<section><h2>Carried over</h2><div class="list">${over.map(t => taskRow(t, { showDate: true, move: true })).join('')}</div></section>` : ''}
+    ${timed.length ? `<section><h2>Scheduled</h2><div class="list">${timed.map(t => taskRow(t)).join('')}</div></section>` : ''}
+    ${any.length ? `<section><h2>Anytime</h2><div class="list">${any.map(t => taskRow(t)).join('')}</div></section>` : ''}
+    ${!all.length && !over.length ? `<div class="empty wide"><strong>Nothing planned.</strong>Add your first task below.</div>` : ''}
+    <section class="qa"><form class="quick" id="quick">${icon('plus')}<input name="q" placeholder="Add a task…" aria-label="Quick add task" autocomplete="off" enterkeyhint="done" maxlength="140"></form>
+    <p class="hint">Try <kbd>Gym 6-7pm tomorrow #health</kbd> · end with <kbd>!</kbd> for priority.</p></section>
+    </div>`;
 }
 
 function goalStats(g) {
@@ -444,7 +446,14 @@ function render() {
   placeInd();
   const sc = $('#cal-scroll'); if (sc) sc.scrollTop = ui.calScroll ?? Math.max(0, (new Date().getHours() - 1.5) * HOUR);
 }
-function placeInd() { const on = $('.dock .on'), ind = $('.ind'); ind.style.opacity = on ? 1 : 0; if (on) ind.style.transform = `translateX(${on.offsetLeft + on.offsetWidth / 2}px)`; }
+const wide = matchMedia('(min-width: 1000px)');
+function placeInd() {
+  const on = $('.dock .on'), ind = $('.ind'), show = on && on.offsetParent;
+  ind.style.opacity = show ? 1 : 0;
+  // bottom island on phones (slides sideways), sidebar on desktop (slides vertically)
+  if (show) ind.style.transform = wide.matches ? `translateY(${on.offsetTop + on.offsetHeight / 2}px)` : `translateX(${on.offsetLeft + on.offsetWidth / 2}px)`;
+}
+wide.addEventListener('change', placeInd);
 addEventListener('resize', placeInd);
 function applyTheme() {
   const t = S.settings.theme;
@@ -672,6 +681,14 @@ document.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, {
 document.addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.goal, .task')) { e.preventDefault(); e.target.click(); }
   if (e.key === 'n' && !e.target.closest('input, textarea, select, dialog') && !e.metaKey && !e.ctrlKey) { e.preventDefault(); openTask(null); }
+  // desktop shortcuts: 1–5 switch views, T jumps to today, / focuses quick add, arrows page the calendar
+  if (e.target.closest('input, textarea, select, dialog') || e.metaKey || e.ctrlKey || e.altKey) return;
+  const tabs = { 1: 'today', 2: 'cal', 3: 'goals', 4: 'you', 5: 'focus' };
+  if (tabs[e.key]) { ui.tab = tabs[e.key]; render(); }
+  else if (e.key === 't') { ui.date = today(); ui.calScroll = null; const sc = $('#cal-scroll'); if (sc) sc.id = ''; render(); }
+  else if (e.key === '/' && $('#quick input')) { e.preventDefault(); $('#quick input').focus(); }
+  else if (ui.tab === 'cal' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) ACT[e.key === 'ArrowLeft' ? 'cal-prev' : 'cal-next']();
+  else if (ui.tab === 'cal' && { d: 'day', w: 'week' }[e.key]) { ui.calMode = { d: 'day', w: 'week' }[e.key]; render(); }
 });
 document.addEventListener('submit', e => {
   if (e.target.id !== 'quick') return;
@@ -713,7 +730,7 @@ document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preven
 $('#bell').innerHTML = icon('bell');
 $('#go-focus').innerHTML = icon('focus');
 $$('.dock [data-tab]').forEach(b => b.innerHTML = icon(b.dataset.tab === 'you' ? 'chart' : b.dataset.tab) + `<span>${b.getAttribute('aria-label')}</span>`);
-$('.fab').innerHTML = icon('plus');
+$('.fab').innerHTML = icon('plus') + '<span>New task</span><kbd>N</kbd>';
 applyTheme();
 render();
 if (params.get('new')) openTask(null);

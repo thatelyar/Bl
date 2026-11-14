@@ -34,6 +34,10 @@ Everything is stored on your device. No account, no server, no tracking.
 Kairo has no server, so reminders are delivered while the app is open or running in the background.
 If it was fully closed, missed reminders appear the next time you open it.
 
+### Keyboard (desktop)
+
+`N` new task · `/` quick add · `1`–`5` switch views · `T` today · `←` `→` page the calendar · `D` / `W` day or week
+
 ## Develop
 
 No build step. Serve the folder and open it:
